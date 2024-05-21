@@ -1,4 +1,4 @@
-package com.example.pixhawk.ui.theme
+package com.example.pixhawk
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -30,11 +30,10 @@ import kotlin.math.floor
 
 class PixHawk{
     @Composable
-    fun FakeGPSApp() {
+    fun PixHawkApp() {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
         var usbSerialPort by remember { mutableStateOf<UsbSerialPort?>(null) }
-        var log by remember { mutableStateOf("Initializing...\n") }
 
         val exampleFileContent2 = """
             DOP: 0.3,0.3,0.3,21
@@ -50,7 +49,6 @@ class PixHawk{
                     if (availableDrivers.isEmpty()) {
                         Log.i("Mohammed","No USB devices found.")
 
-                        log += "No USB devices found.\n"
                         return@launch
                     }
 
@@ -70,7 +68,6 @@ class PixHawk{
                     Log.i("Mohammed","${driver.ports}")
 
                     val connection = usbManager.openDevice(driver.device) ?: run {
-                        log += "Could not open connection to USB device.\n"
                         Log.i("Mohammed","Could not open connection to USB device")
 
                         return@launch
@@ -83,15 +80,15 @@ class PixHawk{
                     Log.i("mohammed","$port")
 
                 } catch (e: IOException) {
-                    log += "Error: ${e.message}\n"
+                    Log.i("mohammed","failed to connect to any USB device, ERROR :$e")
                 }
             }
         }
-        if(usbSerialPort != null) FakeGPSContent(fileContent = exampleFileContent2, usbSerialPort = usbSerialPort)
+        if(usbSerialPort != null) sendNMEA(fileContent = exampleFileContent2, usbSerialPort = usbSerialPort)
     }
 
     @Composable
-    fun FakeGPSContent(fileContent: String, usbSerialPort: UsbSerialPort?) {
+    fun sendNMEA(fileContent: String, usbSerialPort: UsbSerialPort?) {
         var lines by remember { mutableStateOf(fileContent.split("\n")) }
 
         LaunchedEffect(Unit) {

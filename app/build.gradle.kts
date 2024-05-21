@@ -60,6 +60,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation ("com.github.mik3y:usb-serial-for-android:3.7.0")
+    implementation ("com.google.android.gms:play-services-location:18.0.0")
     implementation(libs.androidx.appcompat)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
