@@ -7,9 +7,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
-import com.example.pixhawk.PixHawk.Companion.ACTION_USB_PERMISSION
 import com.example.pixhawk.gps.Gps
-
+import com.example.pixhawk.usb.UsbPermission.Companion.ACTION_USB_PERMISSION
 
 class MainActivity : ComponentActivity() {
     private lateinit var usbManager: UsbManager

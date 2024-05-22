@@ -1,0 +1,108 @@
+package com.example.pixhawk.dialogs
+
+import android.content.Context
+import android.hardware.usb.UsbManager
+import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import com.example.pixhawk.usb.UsbPermission
+import com.hoho.android.usbserial.driver.UsbSerialDriver
+import com.hoho.android.usbserial.driver.UsbSerialPort
+import com.hoho.android.usbserial.driver.UsbSerialProber
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.IOException
+
+@Composable
+fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?>){
+    var showDialog by remember { mutableStateOf(true) }
+    var driversForDialog by remember { mutableStateOf(listOf<String>()) }
+    var availableDrivers by remember { mutableStateOf(emptyList<UsbSerialDriver>()) }
+    var selectedDriver by remember { mutableStateOf<UsbSerialDriver?>(null) }
+    var selectedDriverIndex by remember { mutableStateOf(-1) }
+    val scope = rememberCoroutineScope()
+
+
+    LaunchedEffect(Unit) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
+                val drivers = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager)
+                availableDrivers = drivers
+                driversForDialog = if (drivers.isEmpty()) {
+                    listOf("No USB devices found.")
+                } else {
+                    drivers.map { it.device.deviceName }
+                }
+            } catch (e: IOException) {
+                Log.i("mohammed", "failed to connect to any USB device, ERROR :$e")
+            }
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(onDismissRequest = {},
+            title = { Text(text = "Available USB Drivers") },
+            text = { if (driversForDialog.isEmpty()) { Text("Searching for USB devices...") }
+            else {
+                Column {
+                    driversForDialog.forEachIndexed { index, driverName ->
+                        Text(driverName, modifier = Modifier.clickable {
+                            selectedDriverIndex = index
+                            selectedDriver = availableDrivers[index]
+
+                        }.background(if (selectedDriverIndex == index) Color.LightGray else Color.Transparent)
+                            .padding(8.dp),
+                            color = if (selectedDriverIndex == index) Color.Black else Color.Unspecified
+                        )
+                    }
+                }
+            }
+            },
+            confirmButton = { Button(
+                    onClick = { showDialog = false },
+                    colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.LightGray,
+                    contentColor = Color.Black
+                )
+            ) {
+                Text("OK")
+            }
+                            },
+            dismissButton = { Button(
+                    onClick = {
+                        selectedDriver = null
+                        showDialog = false },
+                        colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.LightGray,
+                        contentColor = Color.Black
+                    )
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (!showDialog && selectedDriver != null) {
+        Log.i("mohammed", "gick in")
+        UsbPermission().RequestUsbPermission(context, selectedDriver,usbSerialPort)
+    }
+}

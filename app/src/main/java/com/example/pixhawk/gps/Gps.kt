@@ -58,5 +58,5 @@ class Gps( private val context: Context) {
             .addOnFailureListener { e ->
                 Log.e(ContentValues.TAG, "Failed to get location: ${e.message}")
             }
-        }
-   }
+    }
+}
