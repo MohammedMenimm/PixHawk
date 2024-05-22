@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 
 @Composable
-fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?>){
+fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?>,connectedToUsb: MutableState<Boolean>,alreadyGivenPermission: MutableState<Boolean>){
     var showDialog by remember { mutableStateOf(true) }
     var driversForDialog by remember { mutableStateOf(listOf<String>()) }
     var availableDrivers by remember { mutableStateOf(emptyList<UsbSerialDriver>()) }
@@ -48,6 +48,7 @@ fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?
                 availableDrivers = drivers
                 driversForDialog = if (drivers.isEmpty()) {
                     listOf("No USB devices found.")
+                    return@launch
                 } else {
                     drivers.map { it.device.deviceName }
                 }
@@ -77,7 +78,9 @@ fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?
             }
             },
             confirmButton = { Button(
-                    onClick = { showDialog = false },
+                    onClick = {
+                        showDialog = false
+                              },
                     colors = ButtonDefaults.buttonColors(
                     containerColor = Color.LightGray,
                     contentColor = Color.Black
@@ -101,8 +104,8 @@ fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?
         )
     }
 
-    if (!showDialog && selectedDriver != null) {
-        Log.i("mohammed", "gick in")
-        UsbPermission().RequestUsbPermission(context, selectedDriver,usbSerialPort)
+    if (showDialog == false && alreadyGivenPermission.value == false) {
+        Log.i("mohammed", "Requesting USB permission")
+        UsbPermission().RequestUsbPermission(context, selectedDriver, usbSerialPort, connectedToUsb,alreadyGivenPermission)
     }
 }

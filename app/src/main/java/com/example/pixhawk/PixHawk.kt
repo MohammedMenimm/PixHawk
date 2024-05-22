@@ -3,10 +3,12 @@ package com.example.pixhawk
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -16,6 +18,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.example.pixhawk.dialogs.UsbDriverDialog
+import com.example.pixhawk.screen.PixHawkHomeScreen
 import com.example.pixhawk.usb.UsbPermission.Companion.ACTION_USB_PERMISSION
 import com.hoho.android.usbserial.driver.UsbSerialPort
 import kotlinx.coroutines.delay
@@ -34,6 +37,9 @@ class PixHawk{
         val context = LocalContext.current
         rememberCoroutineScope()
         val usbSerialPort = remember { mutableStateOf<UsbSerialPort?>(null) }
+        val connectedToUsb = remember { mutableStateOf(false) }
+        val transmittingData = remember { mutableStateOf(false) }
+        val alreadyGivenPermission =  remember { mutableStateOf(false) }
 
         val exampleFileContent2 = """
             DOP: 0.3,0.3,0.3,21
@@ -41,16 +47,47 @@ class PixHawk{
             Pos: 55.882025,13.001751,27.3,21,0.3
         """.trimIndent()
 
-        UsbDriverDialog(context = context,usbSerialPort)
+        DisposableEffect(context) {
+            val usbDetachedReceiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    if (intent?.action == UsbManager.ACTION_USB_DEVICE_DETACHED) {
+                        val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                        if (device != null) {
+                            Log.d("USB", "Device detached: $device")
+                            connectedToUsb.value = false
+                            usbSerialPort.value = null
+                        }
+                    }
+                }
+            }
 
-        if(usbSerialPort.value != null) sendNMEA(fileContent = exampleFileContent2, usbSerialPort = usbSerialPort)
+            val filter = IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED)
+            context.registerReceiver(usbDetachedReceiver, filter)
+
+            onDispose {
+                context.unregisterReceiver(usbDetachedReceiver)
+            }
+        }
+        UsbDriverDialog(context = context,usbSerialPort,connectedToUsb,alreadyGivenPermission)
+
+        if(usbSerialPort.value != null) {
+            transmittingData.value = true
+            TransmitData(fileContent = exampleFileContent2, usbSerialPort = usbSerialPort, connectedToUsb,transmittingData)
+        }
+
+        PixHawkHomeScreen(
+            connectedToUsb = connectedToUsb,
+            transmittingData = transmittingData
+        )
     }
     @Composable
-    fun sendNMEA(fileContent: String, usbSerialPort: MutableState<UsbSerialPort?>?) {
+    fun TransmitData(fileContent: String, usbSerialPort: MutableState<UsbSerialPort?>,connectedToUsb: MutableState<Boolean>,transmittingData: MutableState<Boolean>) {
         var lines by remember { mutableStateOf(fileContent.split("\n")) }
 
         LaunchedEffect(Unit) {
             launch {
+                try {
+
                 while (true) {
                     lines.forEach { line ->
                         if (line.startsWith("Pos:")) {
@@ -67,7 +104,7 @@ class PixHawk{
                             val checksum = calculateNMEAChecksum(gga)
                             val ggaWithChecksum = "\$${gga}*${checksum}"
                             if(usbSerialPort == null) println("SendingFake: $ggaWithChecksum") else{
-                                sendNmea(gga, usbSerialPort.value)
+                                sendNmea(gga, usbSerialPort.value,connectedToUsb)
                             }
 
                             val currDate = getCurrentDateDdmmyy()
@@ -75,7 +112,7 @@ class PixHawk{
                             val rmcChecksum = calculateNMEAChecksum(rmc)
                             val rmcWithChecksum = "\$${rmc}*${rmcChecksum}"
                             if(usbSerialPort == null ) println("SendingFake: $rmcWithChecksum") else {
-                                sendNmea(rmc, usbSerialPort.value)
+                                sendNmea(rmc, usbSerialPort.value,connectedToUsb)
                             }
                         }
 
@@ -88,13 +125,18 @@ class PixHawk{
                             val checksum = calculateNMEAChecksum(gsa)
                             val gsaWithChecksum = "\$${gsa}*${checksum}"
                             if(usbSerialPort == null ) println("SendingFake: $gsaWithChecksum") else {
-                                sendNmea(gsa, usbSerialPort.value)
+                                sendNmea(gsa, usbSerialPort.value, connectedToUsb)
                             }
                         }
-                        delay(100) // Delay for 0.1 seconds
+                        delay(1000)// Delay for 0.1 seconds
                     }
                     // Reset the lines
                     lines = fileContent.split("\n")
+                }
+            } catch (e: Exception) {
+                    transmittingData.value = false
+                    return@launch
+                    Log.e("TransmitData", "Error in data transmission loop", e)
                 }
             }
         }
@@ -152,13 +194,17 @@ class PixHawk{
         return checksum.toString(16).padStart(2, '0').uppercase()
     }
 
-    private fun sendNmea(payload: String, port: UsbSerialPort?) {
+    private fun sendNmea(payload: String, port: UsbSerialPort?,connectedToUsb: MutableState<Boolean> ) {
         val sentence = "\$" + payload + "*" + calculateNMEAChecksum(payload) + "\r\n"
         try {
             port?.write(sentence.toByteArray(Charsets.US_ASCII),sentence.length)
             println("Sent NMEA To Port: $sentence")
 
         } catch (e: IOException) {
+            if(port == null){
+                connectedToUsb.value = false
+                return
+            }
             e.printStackTrace()
         }
     }

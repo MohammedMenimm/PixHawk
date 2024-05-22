@@ -14,7 +14,7 @@ import com.hoho.android.usbserial.driver.UsbSerialPort
 import java.io.IOException
 class UsbPermission {
     @Composable
-    fun RequestUsbPermission(context: Context, driver: UsbSerialDriver?, usbSerialPort: MutableState<UsbSerialPort?>) {
+    fun RequestUsbPermission(context: Context, driver: UsbSerialDriver?, usbSerialPort: MutableState<UsbSerialPort?>,connectedToUsb: MutableState<Boolean>,alreadyGivenPermission: MutableState<Boolean>) {
 
         val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
         val usbDevice = driver?.device
@@ -26,7 +26,7 @@ class UsbPermission {
 
         if (usbManager.hasPermission(usbDevice)) {
             // Permission already granted
-            connectToUsbDevice(usbManager, usbDevice, driver, usbSerialPort)
+            connectToUsbDevice(usbManager, usbDevice, driver, usbSerialPort,connectedToUsb)
         } else {
             // Request permission
             val permissionIntent = PendingIntent.getBroadcast(
@@ -37,7 +37,8 @@ class UsbPermission {
             )
             val receiver = UsbPermissionReceiver(
                 onPermissionGranted = { device ->
-                    connectToUsbDevice(usbManager, device, driver, usbSerialPort)
+                    alreadyGivenPermission.value = true
+                    connectToUsbDevice(usbManager, device, driver, usbSerialPort,connectedToUsb)
                 },
                 onPermissionDenied = {
                     Log.i("Mohammed", "Permission denied for USB device")
@@ -53,10 +54,10 @@ class UsbPermission {
         usbManager: UsbManager,
         usbDevice: UsbDevice,
         driver: UsbSerialDriver?,
-        usbSerialPort: MutableState<UsbSerialPort?>
+        usbSerialPort: MutableState<UsbSerialPort?>,
+        connectedToUsb: MutableState<Boolean>
     ) {
         val port = driver?.ports?.get(0)
-
         val connection = usbManager.openDevice(usbDevice)
         try {
             port?.apply {
@@ -64,13 +65,17 @@ class UsbPermission {
                     open(connection)
                     setParameters(9600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
                     usbSerialPort.value = this
+                    connectedToUsb.value = true
                     Log.i("Mohammed", "USB device connected.")
                 } else {
                     Log.i("Mohammed", "Port is already open.")
+                    connectedToUsb.value = true
                 }
             }
         } catch (e: IOException) {
             Log.e("Mohammed", "Error opening port: ${e.message}", e)
+            connectedToUsb.value = false
+            usbSerialPort.value = null
         }
     }
     companion object {
