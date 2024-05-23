@@ -2,7 +2,6 @@ package com.example.pixhawk.dialogs
 
 import android.content.Context
 import android.hardware.usb.UsbManager
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -23,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.pixhawk.usb.UsbPermission
+import com.example.pixhawk.viewModel.LogViewModel
 import com.hoho.android.usbserial.driver.UsbSerialDriver
 import com.hoho.android.usbserial.driver.UsbSerialPort
 import com.hoho.android.usbserial.driver.UsbSerialProber
@@ -31,13 +31,15 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 
 @Composable
-fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?>,connectedToUsb: MutableState<Boolean>,alreadyGivenPermission: MutableState<Boolean>){
+fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?>, connectedToUsb: MutableState<Boolean>,
+                    alreadyGivenPermission: MutableState<Boolean>, logViewModel: LogViewModel){
     var showDialog by remember { mutableStateOf(true) }
     var driversForDialog by remember { mutableStateOf(listOf<String>()) }
     var availableDrivers by remember { mutableStateOf(emptyList<UsbSerialDriver>()) }
     var selectedDriver by remember { mutableStateOf<UsbSerialDriver?>(null) }
     var selectedDriverIndex by remember { mutableStateOf(-1) }
     val scope = rememberCoroutineScope()
+    var alreadyShownDialog by remember { mutableStateOf(false) }
 
 
     LaunchedEffect(Unit) {
@@ -53,7 +55,7 @@ fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?
                     drivers.map { it.device.deviceName }
                 }
             } catch (e: IOException) {
-                Log.i("mohammed", "failed to connect to any USB device, ERROR :$e")
+                logViewModel.addLog("failed to connect to any USB device, ERROR ")
             }
         }
     }
@@ -78,34 +80,38 @@ fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?
             }
             },
             confirmButton = { Button(
-                    onClick = {
-                        showDialog = false
-                              },
-                    colors = ButtonDefaults.buttonColors(
+                onClick = {
+                    showDialog = false
+                },
+                colors = ButtonDefaults.buttonColors(
                     containerColor = Color.LightGray,
                     contentColor = Color.Black
                 )
             ) {
                 Text("OK")
             }
-                            },
+            },
             dismissButton = { Button(
-                    onClick = {
-                        selectedDriver = null
-                        showDialog = false },
-                        colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Black
-                    )
-                ) {
-                    Text("Cancel")
-                }
+                onClick = {
+                    selectedDriver = null
+                    showDialog = false
+                          return@Button},
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.LightGray,
+                    contentColor = Color.Black
+                )
+            ) {
+                Text("Cancel")
+            }
             }
         )
     }
 
-    if (showDialog == false && alreadyGivenPermission.value == false) {
-        Log.i("mohammed", "Requesting USB permission")
-        UsbPermission().RequestUsbPermission(context, selectedDriver, usbSerialPort, connectedToUsb,alreadyGivenPermission)
+    if (!showDialog && !alreadyShownDialog && !alreadyGivenPermission.value) {
+        logViewModel.addLog("Requesting USB permission")
+        alreadyShownDialog = true
+        UsbPermission(logViewModel)
+            .RequestUsbPermission(context, selectedDriver, usbSerialPort, connectedToUsb,alreadyGivenPermission
+        )
     }
 }

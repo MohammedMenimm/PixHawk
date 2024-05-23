@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.util.Log
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -18,8 +19,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.example.pixhawk.dialogs.UsbDriverDialog
+import com.example.pixhawk.screen.LogScreen
 import com.example.pixhawk.screen.PixHawkHomeScreen
 import com.example.pixhawk.usb.UsbPermission.Companion.ACTION_USB_PERMISSION
+import com.example.pixhawk.viewModel.LogViewModel
 import com.hoho.android.usbserial.driver.UsbSerialPort
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -31,7 +34,7 @@ import java.util.TimeZone
 import kotlin.math.abs
 import kotlin.math.floor
 
-class PixHawk{
+class PixHawk(private val logViewModel: LogViewModel){
     @Composable
     fun PixHawkApp() {
         val context = LocalContext.current
@@ -68,17 +71,21 @@ class PixHawk{
                 context.unregisterReceiver(usbDetachedReceiver)
             }
         }
-        UsbDriverDialog(context = context,usbSerialPort,connectedToUsb,alreadyGivenPermission)
 
-        if(usbSerialPort.value != null) {
-            transmittingData.value = true
-            TransmitData(fileContent = exampleFileContent2, usbSerialPort = usbSerialPort, connectedToUsb,transmittingData)
+        Column {
+            UsbDriverDialog(context = context,usbSerialPort,connectedToUsb,alreadyGivenPermission, logViewModel)
+
+           if(usbSerialPort.value != null) {
+                transmittingData.value = true
+                TransmitData(fileContent = exampleFileContent2, usbSerialPort = usbSerialPort, connectedToUsb,transmittingData)
+            }
+
+            PixHawkHomeScreen(
+                connectedToUsb = connectedToUsb,
+                transmittingData = transmittingData
+            )
+            LogScreen(logViewModel)
         }
-
-        PixHawkHomeScreen(
-            connectedToUsb = connectedToUsb,
-            transmittingData = transmittingData
-        )
     }
     @Composable
     fun TransmitData(fileContent: String, usbSerialPort: MutableState<UsbSerialPort?>,connectedToUsb: MutableState<Boolean>,transmittingData: MutableState<Boolean>) {
@@ -198,7 +205,7 @@ class PixHawk{
         val sentence = "\$" + payload + "*" + calculateNMEAChecksum(payload) + "\r\n"
         try {
             port?.write(sentence.toByteArray(Charsets.US_ASCII),sentence.length)
-            println("Sent NMEA To Port: $sentence")
+            logViewModel.addLog("Sending: $sentence")
 
         } catch (e: IOException) {
             if(port == null){

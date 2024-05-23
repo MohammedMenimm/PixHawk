@@ -9,18 +9,20 @@ import android.hardware.usb.UsbManager
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import com.example.pixhawk.viewModel.LogViewModel
 import com.hoho.android.usbserial.driver.UsbSerialDriver
 import com.hoho.android.usbserial.driver.UsbSerialPort
 import java.io.IOException
-class UsbPermission {
+class UsbPermission(private val logViewModel: LogViewModel) {
     @Composable
-    fun RequestUsbPermission(context: Context, driver: UsbSerialDriver?, usbSerialPort: MutableState<UsbSerialPort?>,connectedToUsb: MutableState<Boolean>,alreadyGivenPermission: MutableState<Boolean>) {
+    fun RequestUsbPermission(context: Context, driver: UsbSerialDriver?, usbSerialPort: MutableState<UsbSerialPort?>,
+                             connectedToUsb: MutableState<Boolean>,alreadyGivenPermission: MutableState<Boolean>) {
 
         val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
         val usbDevice = driver?.device
 
         if (usbDevice == null) {
-            Log.e("Mohammed", "No USB device found.")
+            logViewModel.addLog("No USB device found.")
             return
         }
 
@@ -29,9 +31,7 @@ class UsbPermission {
             connectToUsbDevice(usbManager, usbDevice, driver, usbSerialPort,connectedToUsb)
         } else {
             // Request permission
-            val permissionIntent = PendingIntent.getBroadcast(
-                context,
-                0,
+            val permissionIntent = PendingIntent.getBroadcast(context, 0,
                 Intent(ACTION_USB_PERMISSION),
                 PendingIntent.FLAG_UPDATE_CURRENT
             )
@@ -41,6 +41,7 @@ class UsbPermission {
                     connectToUsbDevice(usbManager, device, driver, usbSerialPort,connectedToUsb)
                 },
                 onPermissionDenied = {
+                    logViewModel.addLog("Permission denied for USB device")
                     Log.i("Mohammed", "Permission denied for USB device")
                 })
 
@@ -66,14 +67,16 @@ class UsbPermission {
                     setParameters(9600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
                     usbSerialPort.value = this
                     connectedToUsb.value = true
-                    Log.i("Mohammed", "USB device connected.")
+                    logViewModel.addLog("USB device connected")
+                    Log.i("Mohammed", "USB device connected")
                 } else {
-                    Log.i("Mohammed", "Port is already open.")
+                    logViewModel.addLog("Port is already open")
+                    Log.i("Mohammed", "Port is already open")
                     connectedToUsb.value = true
                 }
             }
         } catch (e: IOException) {
-            Log.e("Mohammed", "Error opening port: ${e.message}", e)
+            logViewModel.addLog("Error opening port: ${e.message}")
             connectedToUsb.value = false
             usbSerialPort.value = null
         }

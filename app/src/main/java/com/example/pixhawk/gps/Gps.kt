@@ -10,10 +10,11 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.ActivityCompat
+import com.example.pixhawk.viewModel.LogViewModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 
-class Gps( private val context: Context) {
+class Gps( private val context: Context, private val logViewModel: LogViewModel) {
 
     private val fusedLocationClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context)
     private val handler = Handler(Looper.getMainLooper())
