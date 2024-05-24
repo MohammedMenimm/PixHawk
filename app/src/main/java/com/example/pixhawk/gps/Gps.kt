@@ -78,13 +78,13 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
                     val gpsData = "Pos: $formattedLatitude,$formattedLongitude,$formattedAltitude,$satellites,$formattedHdop"
                     val dopsData = "DOP: $formattedHdop,$formattedVdop,$formattedPdop,$satellites"
 
-                    stringOfGpsAndDops.value.clear()
-                    stringOfGpsAndDops.value.append("$dopsData\n$gpsData\n")
-
                     Log.i(
                         "Gps",
                         "GPS Location - Latitude: $formattedLatitude, Longitude: $formattedLongitude, Altitude: $formattedAltitude, Satellites: $satellites, HDOP: $formattedHdop, VDOP: $formattedVdop, PDOP: $formattedPdop"
                     )
+
+                    stringOfGpsAndDops.value.clear()
+                    stringOfGpsAndDops.value.append("$dopsData\n$gpsData\n")
                 }
             }
         }

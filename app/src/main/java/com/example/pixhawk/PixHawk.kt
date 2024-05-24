@@ -45,6 +45,7 @@ class PixHawk(private val logViewModel: LogViewModel){
         val transmittingData = remember { mutableStateOf(false) }
         val alreadyGivenPermission =  remember { mutableStateOf(false) }
         val stringOfGpsAndDops = remember { mutableStateOf(StringBuilder()) }
+        val startSendingNmea =  remember { mutableStateOf(false) }
 
 
         DisposableEffect(context) {
@@ -73,12 +74,12 @@ class PixHawk(private val logViewModel: LogViewModel){
             Gps(context,logViewModel,stringOfGpsAndDops)
             UsbDriverDialog(context = context,usbSerialPort,connectedToUsb,alreadyGivenPermission, logViewModel)
 
-            if(usbSerialPort.value != null) {
+            if(usbSerialPort.value != null && startSendingNmea.value) {
                 transmittingData.value = true
                 TransmitData(stringBuilder = stringOfGpsAndDops, usbSerialPort = usbSerialPort, connectedToUsb,transmittingData)
             }
 
-            PixHawkHomeScreen(connectedToUsb = connectedToUsb, transmittingData = transmittingData)
+            PixHawkHomeScreen(connectedToUsb = connectedToUsb, transmittingData = transmittingData,startSendingNmea)
             LogScreen(logViewModel)
         }
     }
@@ -127,7 +128,7 @@ class PixHawk(private val logViewModel: LogViewModel){
                     }
                 } catch (e: Exception) {
                     transmittingData.value = false
-                    Log.e("TransmitData", "Error in data transmission loop", e)
+                    Log.e("TransmitData", "Stopped Transmission", e)
                     return@launch
                 }
             }
