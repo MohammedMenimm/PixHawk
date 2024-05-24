@@ -1,5 +1,6 @@
 package com.example.pixhawk
 
+import Gps
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -43,12 +44,8 @@ class PixHawk(private val logViewModel: LogViewModel){
         val connectedToUsb = remember { mutableStateOf(false) }
         val transmittingData = remember { mutableStateOf(false) }
         val alreadyGivenPermission =  remember { mutableStateOf(false) }
+        val stringOfGpsAndDops = remember { mutableStateOf(StringBuilder()) }
 
-        val exampleFileContent2 = """
-            DOP: 0.3,0.3,0.3,21
-            Pos: 55.882007,13.001804,26.8,21,0.3
-            Pos: 55.882025,13.001751,27.3,21,0.3
-        """.trimIndent()
 
         DisposableEffect(context) {
             val usbDetachedReceiver = object : BroadcastReceiver() {
@@ -73,77 +70,65 @@ class PixHawk(private val logViewModel: LogViewModel){
         }
 
         Column {
+            Gps(context,logViewModel,stringOfGpsAndDops)
             UsbDriverDialog(context = context,usbSerialPort,connectedToUsb,alreadyGivenPermission, logViewModel)
 
-           if(usbSerialPort.value != null) {
+            if(usbSerialPort.value != null) {
                 transmittingData.value = true
-                TransmitData(fileContent = exampleFileContent2, usbSerialPort = usbSerialPort, connectedToUsb,transmittingData)
+                TransmitData(stringBuilder = stringOfGpsAndDops, usbSerialPort = usbSerialPort, connectedToUsb,transmittingData)
             }
 
-            PixHawkHomeScreen(
-                connectedToUsb = connectedToUsb,
-                transmittingData = transmittingData
-            )
+            PixHawkHomeScreen(connectedToUsb = connectedToUsb, transmittingData = transmittingData)
             LogScreen(logViewModel)
         }
     }
     @Composable
-    fun TransmitData(fileContent: String, usbSerialPort: MutableState<UsbSerialPort?>,connectedToUsb: MutableState<Boolean>,transmittingData: MutableState<Boolean>) {
-        var lines by remember { mutableStateOf(fileContent.split("\n")) }
+    fun TransmitData(stringBuilder: MutableState<StringBuilder>, usbSerialPort: MutableState<UsbSerialPort?>,connectedToUsb: MutableState<Boolean>,transmittingData: MutableState<Boolean>) {
+        var lines by remember { mutableStateOf(stringBuilder.value.toString().split("\n")) }
 
         LaunchedEffect(Unit) {
             launch {
                 try {
+                    while (true) {
+                        lines.forEach { line ->
+                            if (line.startsWith("Pos:")) {
+                                val coords = parseCoordsFromLine(line)
+                                val lat = decdeg2nmea(coords[0])
+                                val long = decdeg2nmea(coords[1])
+                                val alt = coords[2]
+                                val currTime = getNmeaTime()
+                                val quality = getLastTwoValues(line)
+                                val sats = quality[0] // Sats ex. 07
+                                val hdop = quality[1] // HDOP ex. 1.3
 
-                while (true) {
-                    lines.forEach { line ->
-                        if (line.startsWith("Pos:")) {
-                            val coords = parseCoordsFromLine(line)
-                            val lat = decdeg2nmea(coords[0])
-                            val long = decdeg2nmea(coords[1])
-                            val alt = coords[2]
-                            val currTime = getNmeaTime()
-                            val quality = getLastTwoValues(line)
-                            val sats = quality[0] // Sats ex. 07
-                            val hdop = quality[1] // HDOP ex. 1.3
-
-                            val gga = "GPGGA,$currTime,$lat,N,$long,E,1,$sats,$hdop,$alt,M,,,,0000"
-                            val checksum = calculateNMEAChecksum(gga)
-                            val ggaWithChecksum = "\$${gga}*${checksum}"
-                            if(usbSerialPort == null) println("SendingFake: $ggaWithChecksum") else{
+                                val gga = "GPGGA,$currTime,$lat,N,$long,E,1,$sats,$hdop,$alt,M,,,,0000"
                                 sendNmea(gga, usbSerialPort.value,connectedToUsb)
-                            }
 
-                            val currDate = getCurrentDateDdmmyy()
-                            val rmc = "GPRMC,$currTime,A,$lat,N,$long,E,000.5,054.7,$currDate,020.3,E"
-                            val rmcChecksum = calculateNMEAChecksum(rmc)
-                            val rmcWithChecksum = "\$${rmc}*${rmcChecksum}"
-                            if(usbSerialPort == null ) println("SendingFake: $rmcWithChecksum") else {
+
+                                val currDate = getCurrentDateDdmmyy()
+                                val rmc = "GPRMC,$currTime,A,$lat,N,$long,E,000.5,054.7,$currDate,020.3,E"
                                 sendNmea(rmc, usbSerialPort.value,connectedToUsb)
-                            }
-                        }
 
-                        if (line.startsWith("DOP:")) {
-                            val dops = parseCoordsFromLine(line)
-                            val pdop = dops[0]
-                            val hdop = dops[1]
-                            val vdop = dops[2]
-                            val gsa = "GPGSA,A,10,11,12,13,14,15,16,17,18,19,20,21,22,$pdop,$hdop,$vdop"
-                            val checksum = calculateNMEAChecksum(gsa)
-                            val gsaWithChecksum = "\$${gsa}*${checksum}"
-                            if(usbSerialPort == null ) println("SendingFake: $gsaWithChecksum") else {
-                                sendNmea(gsa, usbSerialPort.value, connectedToUsb)
                             }
+
+                            if (line.startsWith("DOP:")) {
+                                val dops = parseCoordsFromLine(line)
+                                val pdop = dops[0]
+                                val hdop = dops[1]
+                                val vdop = dops[2]
+                                val gsa = "GPGSA,A,10,11,12,13,14,15,16,17,18,19,20,21,22,$pdop,$hdop,$vdop"
+                                sendNmea(gsa, usbSerialPort.value, connectedToUsb)
+
+                            }
+                            delay(100) // Delay for 0.1 seconds
                         }
-                        delay(1000)// Delay for 0.1 seconds
+                        // Reset the lines
+                        lines = stringBuilder.value.split("\n")
                     }
-                    // Reset the lines
-                    lines = fileContent.split("\n")
-                }
-            } catch (e: Exception) {
+                } catch (e: Exception) {
                     transmittingData.value = false
-                    return@launch
                     Log.e("TransmitData", "Error in data transmission loop", e)
+                    return@launch
                 }
             }
         }

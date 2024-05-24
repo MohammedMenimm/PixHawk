@@ -7,7 +7,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
-import com.example.pixhawk.gps.Gps
 import com.example.pixhawk.usb.UsbPermission.Companion.ACTION_USB_PERMISSION
 import com.example.pixhawk.viewModel.LogViewModel
 
@@ -24,7 +23,11 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             PixHawk(logViewModel).PixHawkApp()
-            Gps(this,logViewModel)
         }
+    }
+    override fun onDestroy() {
+        super.onDestroy()
+        // Unregister the broadcast receiver to prevent memory leaks
+        unregisterReceiver(PixHawk(logViewModel).usbPermissionActionReceiver)
     }
 }
