@@ -54,6 +54,11 @@ fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?
                 } else {
                     drivers.map { it.device.deviceName }
                 }
+
+                if(drivers.size == 1) {
+                    selectedDriver = availableDrivers[0]
+                    showDialog = false
+                }
             } catch (e: IOException) {
                 logViewModel.addLog("failed to connect to any USB device, ERROR ")
             }
