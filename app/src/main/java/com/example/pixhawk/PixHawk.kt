@@ -70,6 +70,27 @@ class PixHawk(private val logViewModel: LogViewModel){
             }
         }
 
+        DisposableEffect(context) {
+            val usbAttachedReceiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    if (intent?.action == UsbManager.ACTION_USB_DEVICE_ATTACHED) {
+                        val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                        if (device != null) {
+                            Log.i("USB", "Device Attached: $device")
+                            connectedToUsb.value = true
+                        }
+                    }
+                }
+            }
+
+            val filter = IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+            context.registerReceiver(usbAttachedReceiver, filter)
+
+            onDispose {
+                context.unregisterReceiver(usbAttachedReceiver)
+            }
+        }
+
         Column {
             Gps(context,logViewModel,stringOfGpsAndDops)
             UsbDriverDialog(context = context,usbSerialPort,connectedToUsb,alreadyGivenPermission, logViewModel)
