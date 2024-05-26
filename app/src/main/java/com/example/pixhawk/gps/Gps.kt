@@ -8,7 +8,9 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
+import com.example.pixhawk.utils.calculateDOP
 import com.example.pixhawk.viewModel.LogViewModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -16,18 +18,15 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import java.util.Locale
-import kotlin.math.pow
 
 class Gps(private val context: Context, private val logViewModel: LogViewModel, private val stringOfGpsAndDops: MutableState<StringBuilder>) {
     private val UPDATE_INTERVAL: Long = 10 * 100
-    private val locationManager: LocationManager =
-        context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-    private val fusedLocationClient: FusedLocationProviderClient =
-        LocationServices.getFusedLocationProviderClient(context)
+    private val locationManager: LocationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    private val fusedLocationClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context)
     private val handler = Handler(Looper.getMainLooper())
-    private var hdop = 0.0
-    private var vdop = 0.0
-    private var pdop = 0.0
+    private var hdop =  mutableStateOf(0.0)
+    private var vdop =  mutableStateOf(0.0)
+    private var pdop =  mutableStateOf(0.0)
     var latitude = 0.0
     var longitude = 0.0
     var altitude = 0.0
@@ -71,9 +70,9 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
                     val formattedLatitude = String.format(Locale.US, "%.6f", latitude)
                     val formattedLongitude = String.format(Locale.US, "%.6f", longitude )
                     val formattedAltitude = String.format(Locale.US, "%.1f", altitude)
-                    val formattedHdop = String.format(Locale.US, "%.1f", hdop)
-                    val formattedVdop = String.format(Locale.US, "%.1f", vdop)
-                    val formattedPdop = String.format(Locale.US, "%.1f", pdop)
+                    val formattedHdop = String.format(Locale.US, "%.1f", hdop.value)
+                    val formattedVdop = String.format(Locale.US, "%.1f", vdop.value)
+                    val formattedPdop = String.format(Locale.US, "%.1f", pdop.value)
 
                     val gpsData = "Pos: $formattedLatitude,$formattedLongitude,$formattedAltitude,$satellites,$formattedHdop"
                     val dopsData = "DOP: $formattedHdop,$formattedVdop,$formattedPdop,$satellites"
@@ -104,30 +103,7 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
             super.onSatelliteStatusChanged(status)
 
             satellites = status.satelliteCount
-            calculateDOP(status)
-        }
-    }
-    private fun calculateDOP(status: GnssStatus) {
-        val numSatellites = status.satelliteCount
-        var sumOfInverseSquareSnr = 0.0
-        var sumOfSquareElevation = 0.0
-
-        for (i in 0 until numSatellites) {
-            val snr = status.getCn0DbHz(i).toDouble()
-            val elevationRadians = Math.toRadians(status.getElevationDegrees(i).toDouble())
-            val snrLinear = 10.0.pow(snr / 10.0)
-            sumOfInverseSquareSnr += 1.0 / snrLinear
-            sumOfSquareElevation += Math.sin(elevationRadians).pow(2.0)
-        }
-
-        if (numSatellites > 0) {
-            val hdop = Math.sqrt(sumOfInverseSquareSnr)
-            val vdop = Math.sqrt(sumOfSquareElevation / numSatellites)
-            val pdop = Math.sqrt(hdop.pow(2.0) + vdop.pow(2.0))
-
-            this.hdop = hdop
-            this.vdop = vdop
-            this.pdop = pdop
+            calculateDOP(status,hdop,vdop,pdop)
         }
     }
 }
