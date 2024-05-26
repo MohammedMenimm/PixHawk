@@ -23,17 +23,16 @@ import com.example.pixhawk.dialogs.UsbDriverDialog
 import com.example.pixhawk.screen.LogScreen
 import com.example.pixhawk.screen.PixHawkHomeScreen
 import com.example.pixhawk.usb.UsbPermission.Companion.ACTION_USB_PERMISSION
+import com.example.pixhawk.utils.decdeg2nmea
+import com.example.pixhawk.utils.getCurrentDateDdmmyy
+import com.example.pixhawk.utils.getLastTwoValues
+import com.example.pixhawk.utils.getNmeaTime
+import com.example.pixhawk.utils.parseCoordsFromLine
+import com.example.pixhawk.utils.sendNmea
 import com.example.pixhawk.viewModel.LogViewModel
 import com.hoho.android.usbserial.driver.UsbSerialPort
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
-import kotlin.math.abs
-import kotlin.math.floor
 
 class PixHawk(private val logViewModel: LogViewModel){
     @Composable
@@ -153,73 +152,6 @@ class PixHawk(private val logViewModel: LogViewModel){
                     return@launch
                 }
             }
-        }
-    }
-    fun parseCoordsFromLine(line: String): List<Double> {
-        val coordinatesPattern = Regex("-?\\d+\\.\\d+")
-        val matches = coordinatesPattern.findAll(line)
-        return matches.map { it.value.toDouble() }.toList()
-    }
-
-    fun getLastTwoValues(line: String): List<String> {
-        return line.trim().split(",").takeLast(2)
-    }
-
-    fun getNmeaTime(): String {
-        val currentTime = Date()
-        val dateFormat = SimpleDateFormat("HHmmss.SSS", Locale.US).apply {
-            timeZone = TimeZone.getTimeZone("UTC")
-        }
-        return dateFormat.format(currentTime)
-    }
-
-    fun getCurrentDateDdmmyy(): String {
-        val currentDate = System.currentTimeMillis()
-        val formattedDate = SimpleDateFormat("ddMMyy").format(Date(currentDate))
-        return formattedDate
-    }
-
-    fun decdeg2nmea(dd: Double): String {
-        val (degrees, minutes, seconds) = decdeg2dms(dd)
-        val decmin = seconds / 60
-        return nodec(degrees).padStart(2, '0') + nodec(minutes).padStart(2, '0') + String.format("%.4f", decmin).substring(1).replace(',', '.')
-    }
-
-    fun decdeg2dms(dd: Double): Triple<Int, Int, Double> {
-        val isPositive = dd >= 0
-        val absDd = abs(dd)
-        val minutesAndSeconds = absDd * 3600
-        val minutes = floor(minutesAndSeconds / 60).toInt()
-        val seconds = minutesAndSeconds % 60
-        val degrees = floor(minutes / 60.0).toInt()
-        val remainingMinutes = minutes % 60
-        return Triple(if (isPositive) degrees else -degrees, remainingMinutes, seconds)
-    }
-
-    private fun nodec(dec: Int): String {
-        return dec.toString()
-    }
-
-    fun calculateNMEAChecksum(sentence: String): String {
-        var checksum = 0
-        for (c in sentence.toCharArray()) {
-            checksum = checksum xor c.toInt()
-        }
-        return checksum.toString(16).padStart(2, '0').uppercase()
-    }
-
-    private fun sendNmea(payload: String, port: UsbSerialPort?,connectedToUsb: MutableState<Boolean> ) {
-        val sentence = "\$" + payload + "*" + calculateNMEAChecksum(payload) + "\r\n"
-        try {
-            port?.write(sentence.toByteArray(Charsets.US_ASCII),sentence.length)
-            logViewModel.addLog("Sending: $sentence")
-
-        } catch (e: IOException) {
-            if(port == null){
-                connectedToUsb.value = false
-                return
-            }
-            e.printStackTrace()
         }
     }
 
