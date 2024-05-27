@@ -45,7 +45,7 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
     }
     @Composable
     fun ShowGpsInformation() {
-        GpsInfoScreen(satellites.value,latitude.value,longitude.value,altitude.value,hasLocationEnabled.value)
+        GpsInfoScreen(satellites.value,latitude.value,longitude.value,altitude.value,hasLocationEnabled.value, hdop.value,vdop.value,pdop.value)
     }
 
     private fun getGpsLocation() {
@@ -88,16 +88,12 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
                         longitude.value = String.format(Locale.US, "%.6f", location.longitude ).toDouble()
                         altitude.value = String.format(Locale.US, "%.1f", location.altitude).toDouble()
 
-                        val formattedHdop = String.format(Locale.US, "%.1f", hdop.value)
-                        val formattedVdop = String.format(Locale.US, "%.1f", vdop.value)
-                        val formattedPdop = String.format(Locale.US, "%.1f", pdop.value)
-
-                        val gpsData = "Pos: ${latitude.value},${longitude.value},${altitude.value},${satellites.value},$formattedHdop"
-                        val dopsData = "DOP: $formattedHdop,$formattedVdop,$formattedPdop,${satellites.value}"
+                        val gpsData = "Pos: ${latitude.value},${longitude.value},${altitude.value},${satellites.value},$hdop"
+                        val dopsData = "DOP: $hdop,$vdop,$pdop,${satellites.value}"
 
                         Log.i(
                             "Gps",
-                            "GPS Location - Latitude: $latitude, Longitude: $longitude, Altitude: $altitude, Satellites: ${satellites.value}, HDOP: $formattedHdop, VDOP: $formattedVdop, PDOP: $formattedPdop"
+                            "GPS Location - Latitude: $latitude, Longitude: $longitude, Altitude: $altitude, Satellites: ${satellites.value}, HDOP: $hdop, VDOP: $vdop, PDOP: $pdop"
                         )
 
                         stringOfGpsAndDops.value.clear()

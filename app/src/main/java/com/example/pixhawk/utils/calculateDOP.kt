@@ -2,6 +2,7 @@ package com.example.pixhawk.utils
 
 import android.location.GnssStatus
 import androidx.compose.runtime.MutableState
+import java.util.Locale
 import kotlin.math.pow
 
 fun calculateDOP(status: GnssStatus, hdop: MutableState<Double>, vdop:MutableState<Double>, pdop :MutableState<Double>) {
@@ -22,8 +23,12 @@ fun calculateDOP(status: GnssStatus, hdop: MutableState<Double>, vdop:MutableSta
         val Vdop = Math.sqrt(sumOfSquareElevation / numSatellites)
         val Pdop = Math.sqrt(hdop.value.pow(2.0) + vdop.value.pow(2.0))
 
-        hdop.value= Hdop
-        vdop.value = Vdop
-        pdop.value = Pdop
+        val formattedHdop = String.format(Locale.US, "%.1f", Hdop).toDouble()
+        val formattedVdop = String.format(Locale.US, "%.1f", Vdop).toDouble()
+        val formattedPdop = String.format(Locale.US, "%.1f", Pdop).toDouble()
+
+        hdop.value= formattedHdop
+        vdop.value = formattedVdop
+        pdop.value = formattedPdop
     }
 }
