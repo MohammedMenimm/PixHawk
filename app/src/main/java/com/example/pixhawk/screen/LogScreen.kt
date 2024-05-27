@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pixhawk.viewModel.LogViewModel
@@ -26,7 +27,7 @@ fun LogScreen(logViewModel: LogViewModel) {
     val logs by logViewModel.logs.collectAsState()
 
     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.Center){
-        Text( text = "App Logs", modifier = Modifier.padding(bottom = 10.dp))
+        Text( text = "App Logs", modifier = Modifier.padding(bottom = 10.dp), fontWeight = FontWeight.Bold, fontSize = 20.sp)
         LogList(logs = logs)
     }
 }
@@ -45,11 +46,11 @@ fun LogList(logs: List<String>) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
             .background(color = Color.Gray)
-            .height(200.dp)
+            .height(150.dp)
     ) {
         items(reversedLogs) { log ->
             Text(text = log, modifier = Modifier.padding(all = 6.dp),
-                color = Color.White, fontSize = 10.sp)
+                color = Color.White, fontSize = 15.sp)
         }
     }
 }

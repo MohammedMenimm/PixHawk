@@ -92,7 +92,6 @@ class PixHawk(private val logViewModel: LogViewModel){
         }
 
         Column {
-            Gps(context,logViewModel,stringOfGpsAndDops,hasLocationEnabled)
             UsbDriverDialog(context = context,usbSerialPort,connectedToUsb,alreadyGivenPermission, logViewModel)
 
             if(usbSerialPort.value != null && startSendingNmea.value) {
@@ -101,6 +100,7 @@ class PixHawk(private val logViewModel: LogViewModel){
             }
 
             PixHawkHomeScreen(connectedToUsb = connectedToUsb, transmittingData = transmittingData,startSendingNmea)
+            Gps(context,logViewModel,stringOfGpsAndDops,hasLocationEnabled).ShowGpsInformation()
             LogScreen(logViewModel)
         }
     }
