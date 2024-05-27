@@ -4,7 +4,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.util.Log
 import androidx.compose.runtime.Composable
@@ -12,7 +11,7 @@ import androidx.compose.runtime.MutableState
 import com.example.pixhawk.viewModel.LogViewModel
 import com.hoho.android.usbserial.driver.UsbSerialDriver
 import com.hoho.android.usbserial.driver.UsbSerialPort
-import java.io.IOException
+
 class UsbPermission(private val logViewModel: LogViewModel) {
     @Composable
     fun RequestUsbPermission(context: Context, driver: UsbSerialDriver?, usbSerialPort: MutableState<UsbSerialPort?>,
@@ -28,7 +27,7 @@ class UsbPermission(private val logViewModel: LogViewModel) {
 
         if (usbManager.hasPermission(usbDevice)) {
             // Permission already granted
-            connectToUsbDevice(usbManager, usbDevice, driver, usbSerialPort,connectedToUsb)
+            connectToUsbDevice(usbManager, usbDevice, driver, usbSerialPort,connectedToUsb, logViewModel)
         } else {
             // Request permission
             val permissionIntent = PendingIntent.getBroadcast(context, 0,
@@ -38,7 +37,7 @@ class UsbPermission(private val logViewModel: LogViewModel) {
             val receiver = UsbPermissionReceiver(
                 onPermissionGranted = { device ->
                     alreadyGivenPermission.value = true
-                    connectToUsbDevice(usbManager, device, driver, usbSerialPort,connectedToUsb)
+                    connectToUsbDevice(usbManager, device, driver, usbSerialPort,connectedToUsb,logViewModel)
                 },
                 onPermissionDenied = {
                     logViewModel.addLog("Permission denied for USB device")
@@ -49,36 +48,6 @@ class UsbPermission(private val logViewModel: LogViewModel) {
             context.registerReceiver(receiver, filter)
 
             usbManager.requestPermission(usbDevice, permissionIntent)
-        }
-    }
-    private fun connectToUsbDevice(
-        usbManager: UsbManager,
-        usbDevice: UsbDevice,
-        driver: UsbSerialDriver?,
-        usbSerialPort: MutableState<UsbSerialPort?>,
-        connectedToUsb: MutableState<Boolean>
-    ) {
-        val port = driver?.ports?.get(0)
-        val connection = usbManager.openDevice(usbDevice)
-        try {
-            port?.apply {
-                if (!isOpen) {
-                    open(connection)
-                    setParameters(9600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
-                    usbSerialPort.value = this
-                    connectedToUsb.value = true
-                    logViewModel.addLog("USB device connected")
-                    Log.i("Mohammed", "USB device connected")
-                } else {
-                    logViewModel.addLog("Port is already open")
-                    Log.i("Mohammed", "Port is already open")
-                    connectedToUsb.value = true
-                }
-            }
-        } catch (e: IOException) {
-            logViewModel.addLog("Error opening port: ${e.message}")
-            connectedToUsb.value = false
-            usbSerialPort.value = null
         }
     }
     companion object {
