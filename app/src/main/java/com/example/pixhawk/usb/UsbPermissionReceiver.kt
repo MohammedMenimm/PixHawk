@@ -12,7 +12,7 @@ class UsbPermissionReceiver(
 ) : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            UsbPermission.ACTION_USB_PERMISSION -> {
+            RequestUsbPermission.ACTION_USB_PERMISSION -> {
                 synchronized(this) {
                     val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
                     if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {

@@ -29,8 +29,8 @@ fun connectToUsbDevice(
                 logViewModel.addLog("USB device connected")
                 Log.i("Mohammed", "USB device connected")
             } else {
-                logViewModel.addLog("Port is already open")
-                Log.i("Mohammed", "Port is already open")
+                logViewModel.addLog("USB device connected, port was already open")
+                Log.i("Mohammed", "USB device connected, port was already open")
                 connectedToUsb.value = true
             }
         }

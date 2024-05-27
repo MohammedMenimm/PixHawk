@@ -7,7 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
-import com.example.pixhawk.usb.UsbPermission.Companion.ACTION_USB_PERMISSION
+import com.example.pixhawk.usb.RequestUsbPermission.Companion.ACTION_USB_PERMISSION
 import com.example.pixhawk.viewModel.LogViewModel
 
 class MainActivity : ComponentActivity() {

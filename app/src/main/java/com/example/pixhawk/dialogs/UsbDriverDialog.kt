@@ -21,7 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.example.pixhawk.usb.UsbPermission
+import com.example.pixhawk.usb.RequestUsbPermission
 import com.example.pixhawk.viewModel.LogViewModel
 import com.hoho.android.usbserial.driver.UsbSerialDriver
 import com.hoho.android.usbserial.driver.UsbSerialPort
@@ -115,8 +115,8 @@ fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?
     if (!showDialog && !alreadyShownDialog && !alreadyGivenPermission.value) {
         logViewModel.addLog("Requesting USB permission")
         alreadyShownDialog = true
-        UsbPermission(logViewModel)
-            .RequestUsbPermission(context, selectedDriver, usbSerialPort, connectedToUsb,alreadyGivenPermission
+        RequestUsbPermission(logViewModel)
+            .requestUsbPermission(context, selectedDriver, usbSerialPort, connectedToUsb,alreadyGivenPermission
         )
     }
 }

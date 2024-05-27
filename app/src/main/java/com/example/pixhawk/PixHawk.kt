@@ -22,7 +22,8 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.pixhawk.dialogs.UsbDriverDialog
 import com.example.pixhawk.screen.LogScreen
 import com.example.pixhawk.screen.PixHawkHomeScreen
-import com.example.pixhawk.usb.UsbPermission.Companion.ACTION_USB_PERMISSION
+import com.example.pixhawk.usb.RequestUsbPermission
+import com.example.pixhawk.usb.RequestUsbPermission.Companion.ACTION_USB_PERMISSION
 import com.example.pixhawk.utils.decdeg2nmea
 import com.example.pixhawk.utils.getCurrentDateDdmmyy
 import com.example.pixhawk.utils.getLastTwoValues
@@ -31,6 +32,7 @@ import com.example.pixhawk.utils.parseCoordsFromLine
 import com.example.pixhawk.utils.sendNmea
 import com.example.pixhawk.viewModel.LogViewModel
 import com.hoho.android.usbserial.driver.UsbSerialPort
+import com.hoho.android.usbserial.driver.UsbSerialProber
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -47,6 +49,18 @@ class PixHawk(private val logViewModel: LogViewModel){
         val startSendingNmea =  remember { mutableStateOf(false) }
         val hasLocationEnabled =  remember { mutableStateOf(false) }
 
+        Column {
+            UsbDriverDialog(context = context,usbSerialPort,connectedToUsb,alreadyGivenPermission, logViewModel)
+
+            if(usbSerialPort.value != null && startSendingNmea.value) {
+                transmittingData.value = true
+                TransmitData(stringBuilder = stringOfGpsAndDops, usbSerialPort = usbSerialPort, transmittingData)
+            }
+
+            PixHawkHomeScreen(connectedToUsb = connectedToUsb, transmittingData = transmittingData,startSendingNmea)
+            Gps(context,logViewModel,stringOfGpsAndDops,hasLocationEnabled).ShowGpsInformation()
+            LogScreen(logViewModel)
+        }
 
         DisposableEffect(context) {
             val usbDetachedReceiver = object : BroadcastReceiver() {
@@ -55,8 +69,8 @@ class PixHawk(private val logViewModel: LogViewModel){
                         val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
                         if (device != null) {
                             Log.d("USB", "Device detached: $device")
+                            logViewModel.addLog("USB device detached")
                             connectedToUsb.value = false
-                            usbSerialPort.value = null
                         }
                     }
                 }
@@ -77,7 +91,13 @@ class PixHawk(private val logViewModel: LogViewModel){
                         val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
                         if (device != null) {
                             Log.i("USB", "Device Attached: $device")
-                            connectedToUsb.value = true
+                            logViewModel.addLog("USB device attached")
+
+                            val driver = UsbSerialProber.getDefaultProber().probeDevice(device)
+                            if (context != null) {
+                                RequestUsbPermission(logViewModel)
+                                    .requestUsbPermission(context, driver, usbSerialPort, connectedToUsb,alreadyGivenPermission)
+                            }
                         }
                     }
                 }
@@ -90,22 +110,9 @@ class PixHawk(private val logViewModel: LogViewModel){
                 context.unregisterReceiver(usbAttachedReceiver)
             }
         }
-
-        Column {
-            UsbDriverDialog(context = context,usbSerialPort,connectedToUsb,alreadyGivenPermission, logViewModel)
-
-            if(usbSerialPort.value != null && startSendingNmea.value) {
-                transmittingData.value = true
-                TransmitData(stringBuilder = stringOfGpsAndDops, usbSerialPort = usbSerialPort, connectedToUsb,transmittingData)
-            }
-
-            PixHawkHomeScreen(connectedToUsb = connectedToUsb, transmittingData = transmittingData,startSendingNmea)
-            Gps(context,logViewModel,stringOfGpsAndDops,hasLocationEnabled).ShowGpsInformation()
-            LogScreen(logViewModel)
-        }
     }
     @Composable
-    fun TransmitData(stringBuilder: MutableState<StringBuilder>, usbSerialPort: MutableState<UsbSerialPort?>,connectedToUsb: MutableState<Boolean>,transmittingData: MutableState<Boolean>) {
+    fun TransmitData(stringBuilder: MutableState<StringBuilder>, usbSerialPort: MutableState<UsbSerialPort?>, transmittingData: MutableState<Boolean>) {
         var lines by remember { mutableStateOf(stringBuilder.value.toString().split("\n")) }
 
         LaunchedEffect(Unit) {
@@ -124,12 +131,12 @@ class PixHawk(private val logViewModel: LogViewModel){
                                 val hdop = quality[1] // HDOP ex. 1.3
 
                                 val gga = "GPGGA,$currTime,$lat,N,$long,E,1,$sats,$hdop,$alt,M,,,,0000"
-                                sendNmea(gga, usbSerialPort.value,connectedToUsb)
+                                sendNmea(gga, usbSerialPort.value)
 
 
                                 val currDate = getCurrentDateDdmmyy()
                                 val rmc = "GPRMC,$currTime,A,$lat,N,$long,E,000.5,054.7,$currDate,020.3,E"
-                                sendNmea(rmc, usbSerialPort.value,connectedToUsb)
+                                sendNmea(rmc, usbSerialPort.value)
 
                             }
 
@@ -139,7 +146,7 @@ class PixHawk(private val logViewModel: LogViewModel){
                                 val hdop = dops[1]
                                 val vdop = dops[2]
                                 val gsa = "GPGSA,A,10,11,12,13,14,15,16,17,18,19,20,21,22,$pdop,$hdop,$vdop"
-                                sendNmea(gsa, usbSerialPort.value, connectedToUsb)
+                                sendNmea(gsa, usbSerialPort.value)
 
                             }
                             delay(100) // Delay for 0.1 seconds
