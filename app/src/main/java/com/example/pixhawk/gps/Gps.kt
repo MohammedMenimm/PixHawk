@@ -19,8 +19,8 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import java.util.Locale
 
-class Gps(private val context: Context, private val logViewModel: LogViewModel, private val stringOfGpsAndDops: MutableState<StringBuilder>) {
-    private val UPDATE_INTERVAL: Long = 10 * 100
+class Gps(private val context: Context, private val logViewModel: LogViewModel, private val stringOfGpsAndDops: MutableState<StringBuilder>,private val hasLocationEnabled: MutableState<Boolean>,) {
+    private val UPDATE_INTERVAL: Long = 10 * 1000
     private val locationManager: LocationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private val fusedLocationClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context)
     private val handler = Handler(Looper.getMainLooper())
@@ -49,61 +49,66 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
                 context,
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
-        ) {
+        )  {
             ActivityCompat.requestPermissions(
                 context as Activity,
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
                 101
             )
             return
+
+        } else{
+            hasLocationEnabled.value = true
         }
 
-        locationManager.registerGnssStatusCallback(gnssStatusCallback, handler)
+        if(hasLocationEnabled.value){
+            val gnssStatusCallback = object : GnssStatus.Callback() {
+                override fun onSatelliteStatusChanged(status: GnssStatus) {
+                    super.onSatelliteStatusChanged(status)
 
-        val locationCallback = object : LocationCallback() {
-            override fun onLocationResult(locationResult: LocationResult?) {
-                locationResult?.lastLocation?.let { location ->
-                    latitude = location.latitude
-                    longitude = location.longitude
-                    altitude = location.altitude
-
-                    val formattedLatitude = String.format(Locale.US, "%.6f", latitude)
-                    val formattedLongitude = String.format(Locale.US, "%.6f", longitude )
-                    val formattedAltitude = String.format(Locale.US, "%.1f", altitude)
-                    val formattedHdop = String.format(Locale.US, "%.1f", hdop.value)
-                    val formattedVdop = String.format(Locale.US, "%.1f", vdop.value)
-                    val formattedPdop = String.format(Locale.US, "%.1f", pdop.value)
-
-                    val gpsData = "Pos: $formattedLatitude,$formattedLongitude,$formattedAltitude,$satellites,$formattedHdop"
-                    val dopsData = "DOP: $formattedHdop,$formattedVdop,$formattedPdop,$satellites"
-
-                    Log.i(
-                        "Gps",
-                        "GPS Location - Latitude: $formattedLatitude, Longitude: $formattedLongitude, Altitude: $formattedAltitude, Satellites: $satellites, HDOP: $formattedHdop, VDOP: $formattedVdop, PDOP: $formattedPdop"
-                    )
-
-                    stringOfGpsAndDops.value.clear()
-                    stringOfGpsAndDops.value.append("$dopsData\n$gpsData\n")
+                    satellites = status.satelliteCount
+                    calculateDOP(status,hdop,vdop,pdop)
                 }
             }
-        }
 
-        fusedLocationClient.requestLocationUpdates(
-            LocationRequest.create().apply {
-                interval = UPDATE_INTERVAL
-                priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-            },
-            locationCallback,
-            Looper.getMainLooper()
-        )
-    }
+            locationManager.registerGnssStatusCallback(gnssStatusCallback, handler)
 
-    private val gnssStatusCallback = object : GnssStatus.Callback() {
-        override fun onSatelliteStatusChanged(status: GnssStatus) {
-            super.onSatelliteStatusChanged(status)
+            val locationCallback = object : LocationCallback() {
+                override fun onLocationResult(locationResult: LocationResult?) {
+                    locationResult?.lastLocation?.let { location ->
+                        latitude = location.latitude
+                        longitude = location.longitude
+                        altitude = location.altitude
 
-            satellites = status.satelliteCount
-            calculateDOP(status,hdop,vdop,pdop)
+                        val formattedLatitude = String.format(Locale.US, "%.6f", latitude)
+                        val formattedLongitude = String.format(Locale.US, "%.6f", longitude )
+                        val formattedAltitude = String.format(Locale.US, "%.1f", altitude)
+                        val formattedHdop = String.format(Locale.US, "%.1f", hdop.value)
+                        val formattedVdop = String.format(Locale.US, "%.1f", vdop.value)
+                        val formattedPdop = String.format(Locale.US, "%.1f", pdop.value)
+
+                        val gpsData = "Pos: $formattedLatitude,$formattedLongitude,$formattedAltitude,$satellites,$formattedHdop"
+                        val dopsData = "DOP: $formattedHdop,$formattedVdop,$formattedPdop,$satellites"
+
+                        Log.i(
+                            "Gps",
+                            "GPS Location - Latitude: $formattedLatitude, Longitude: $formattedLongitude, Altitude: $formattedAltitude, Satellites: $satellites, HDOP: $formattedHdop, VDOP: $formattedVdop, PDOP: $formattedPdop"
+                        )
+
+                        stringOfGpsAndDops.value.clear()
+                        stringOfGpsAndDops.value.append("$dopsData\n$gpsData\n")
+                    }
+                }
+            }
+
+            fusedLocationClient.requestLocationUpdates(
+                LocationRequest.create().apply {
+                    interval = UPDATE_INTERVAL
+                    priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+                },
+                locationCallback,
+                Looper.getMainLooper()
+            )
         }
     }
 }
