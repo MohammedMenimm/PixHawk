@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -22,7 +21,7 @@ import java.util.Locale
 
 @Composable
 fun GpsInfoScreen(satellites: Int, latitude: Double, longitude : Double, altitude : Double, hasLocationEnabled: Boolean,
-                  hdop: Double, vdop: Double, pdop: Double, speed : Float, bearing : Float
+                  hdop: Double, vdop: Double, pdop: Double, speed : Double, bearing : Double
 ) {
 
     val formattedLatitude = String.format(Locale.US, "%.6f", latitude)

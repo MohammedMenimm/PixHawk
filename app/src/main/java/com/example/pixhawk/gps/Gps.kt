@@ -2,11 +2,14 @@ import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.location.GnssStatus
 import android.location.LocationManager
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
@@ -33,9 +36,40 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
     var longitude = mutableStateOf(0.0)
     var altitude = mutableStateOf(0.0)
     var satellites = mutableStateOf(0)
-    var speed =  mutableStateOf (0f)
-    var bearing = mutableStateOf (0f)
-    val MINIMUM_SPEED_THRESHOLD = 0.5f // m/s
+    var speed =  mutableStateOf (0.0)
+    var heading = mutableStateOf(0.0)
+    private val sensorManager: SensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private val accelerometer: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    private val magnetometer: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+
+    private val gravity = FloatArray(3)
+    private val geomagnetic = FloatArray(3)
+    private val rotationMatrix = FloatArray(9)
+    private val orientation = FloatArray(3)
+
+    private val sensorEventListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            when (event.sensor.type) {
+                Sensor.TYPE_ACCELEROMETER -> {
+                    System.arraycopy(event.values, 0, gravity, 0, event.values.size)
+                }
+                Sensor.TYPE_MAGNETIC_FIELD -> {
+                    System.arraycopy(event.values, 0, geomagnetic, 0, event.values.size)
+                }
+            }
+
+            if (SensorManager.getRotationMatrix(rotationMatrix, null, gravity, geomagnetic)) {
+                SensorManager.getOrientation(rotationMatrix, orientation)
+                var temoraryAzimuth = Math.toDegrees(orientation[0].toDouble())
+                heading.value = String.format("%.1f", temoraryAzimuth).replace(',', '.').toDouble()
+
+                if (heading.value < 0) {
+                    heading.value += 360
+                }
+            }
+        }
+        override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
+    }
 
     private val locationRunnable = object : Runnable {
         override fun run() {
@@ -45,11 +79,13 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
     }
     init {
         handler.post(locationRunnable)
+        sensorManager.registerListener(sensorEventListener, accelerometer, 1)
+        sensorManager.registerListener(sensorEventListener, magnetometer, 1)
     }
     @Composable
     fun ShowGpsInformation() {
         GpsInfoScreen(satellites.value,latitude.value,longitude.value,altitude.value,hasLocationEnabled.value,
-            hdop.value,vdop.value,pdop.value,speed.value,bearing.value)
+            hdop.value,vdop.value,pdop.value,speed.value,heading.value)
     }
 
     private fun getGpsLocation() {
@@ -91,8 +127,8 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
                         latitude.value = location.latitude
                         longitude.value = location.longitude
                         altitude.value = location.altitude
-                        speed.value = if (location.speed < MINIMUM_SPEED_THRESHOLD) 0.0f else location.speed
-                        bearing.value = location.bearing
+                        val originalSpeedValue = location.speed.toDouble()
+                        speed.value = String.format("%.3f", originalSpeedValue).replace(',', '.').toDouble()
 
                         val formattedLatitude = String.format(Locale.US, "%.6f", latitude.value)
                         val formattedLongitude = String.format(Locale.US, "%.6f", longitude.value )
@@ -101,13 +137,8 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
                         val formattedVdop = String.format(Locale.US, "%.1f", vdop.value)
                         val formattedPdop = String.format(Locale.US, "%.1f", pdop.value)
 
-                        val gpsData = "Pos: $formattedLatitude,$formattedLongitude,$formattedAltitude,${satellites.value},$formattedHdop"
+                        val gpsData = "Pos: $formattedLatitude,$formattedLongitude,$formattedAltitude,${satellites.value},$formattedHdop,${speed.value},${heading.value}"
                         val dopsData = "DOP: $formattedHdop,$formattedVdop,$formattedPdop,${satellites.value}"
-
-                        Log.i(
-                            "Gps",
-                            "GPS Location - Latitude: $formattedLatitude, Longitude: $formattedLongitude, Altitude: $formattedAltitude, Satellites: ${satellites.value}, HDOP: $formattedHdop, VDOP: $formattedVdop, PDOP: $formattedPdop"
-                        )
 
                         stringOfGpsAndDops.value.clear()
                         stringOfGpsAndDops.value.append("$dopsData\n$gpsData\n")

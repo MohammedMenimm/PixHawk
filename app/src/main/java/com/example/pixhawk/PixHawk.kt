@@ -23,10 +23,9 @@ import com.example.pixhawk.dialogs.UsbDriverDialog
 import com.example.pixhawk.screen.LogScreen
 import com.example.pixhawk.screen.PixHawkHomeScreen
 import com.example.pixhawk.usb.RequestUsbPermission
-import com.example.pixhawk.usb.RequestUsbPermission.Companion.ACTION_USB_PERMISSION
 import com.example.pixhawk.utils.decdeg2nmea
 import com.example.pixhawk.utils.getCurrentDateDdmmyy
-import com.example.pixhawk.utils.getLastTwoValues
+import com.example.pixhawk.utils.getLastFourValues
 import com.example.pixhawk.utils.getNmeaTime
 import com.example.pixhawk.utils.parseCoordsFromLine
 import com.example.pixhawk.utils.sendNmea
@@ -71,6 +70,7 @@ class PixHawk(private val logViewModel: LogViewModel){
                             Log.d("USB", "Device detached: $device")
                             logViewModel.addLog("USB device detached")
                             connectedToUsb.value = false
+                            startSendingNmea.value = false
                         }
                     }
                 }
@@ -126,16 +126,17 @@ class PixHawk(private val logViewModel: LogViewModel){
                                 val long = decdeg2nmea(coords[1])
                                 val alt = coords[2]
                                 val currTime = getNmeaTime()
-                                val quality = getLastTwoValues(line)
+                                val quality = getLastFourValues(line)
                                 val sats = quality[0] // Sats ex. 07
                                 val hdop = quality[1] // HDOP ex. 1.3
+                                val speed = quality[2]
+                                val heading = quality[3]
 
                                 val gga = "GPGGA,$currTime,$lat,N,$long,E,1,$sats,$hdop,$alt,M,,,,0000"
                                 sendNmea(gga, usbSerialPort.value)
 
-
                                 val currDate = getCurrentDateDdmmyy()
-                                val rmc = "GPRMC,$currTime,A,$lat,N,$long,E,000.5,054.7,$currDate,020.3,E"
+                                val rmc = "GPRMC,$currTime,A,$lat,N,$long,E,$speed,$heading,$currDate,020.3,E"
                                 sendNmea(rmc, usbSerialPort.value)
 
                             }
@@ -158,22 +159,6 @@ class PixHawk(private val logViewModel: LogViewModel){
                     transmittingData.value = false
                     Log.e("TransmitData", "Stopped Transmission", e)
                     return@launch
-                }
-            }
-        }
-    }
-
-    val usbPermissionActionReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (ACTION_USB_PERMISSION == intent.action) {
-                synchronized(this) {
-                    val usbDevice: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
-                    if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-                        usbDevice?.apply {
-                        }
-                    } else {
-                        Log.d("USB", "permission denied for device $usbDevice")
-                    }
                 }
             }
         }
