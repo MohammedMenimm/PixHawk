@@ -47,9 +47,10 @@ class PixHawk(private val logViewModel: LogViewModel){
         val stringOfGpsAndDops = remember { mutableStateOf(StringBuilder()) }
         val startSendingNmea =  remember { mutableStateOf(false) }
         val hasLocationEnabled =  remember { mutableStateOf(false) }
+        val showDialog = remember { mutableStateOf(true) }
 
         Column {
-            UsbDriverDialog(context = context,usbSerialPort,connectedToUsb,alreadyGivenPermission, logViewModel)
+            UsbDriverDialog(context = context,usbSerialPort,connectedToUsb,alreadyGivenPermission,showDialog,logViewModel)
 
             if(usbSerialPort.value != null && startSendingNmea.value) {
                 transmittingData.value = true
@@ -95,6 +96,7 @@ class PixHawk(private val logViewModel: LogViewModel){
 
                             val driver = UsbSerialProber.getDefaultProber().probeDevice(device)
                             if (context != null) {
+                                showDialog.value = false
                                 RequestUsbPermission(logViewModel)
                                     .requestUsbPermission(context, driver, usbSerialPort, connectedToUsb,alreadyGivenPermission)
                             }

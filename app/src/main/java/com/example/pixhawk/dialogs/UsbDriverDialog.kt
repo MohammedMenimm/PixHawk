@@ -32,8 +32,7 @@ import java.io.IOException
 
 @Composable
 fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?>, connectedToUsb: MutableState<Boolean>,
-                    alreadyGivenPermission: MutableState<Boolean>, logViewModel: LogViewModel){
-    var showDialog by remember { mutableStateOf(true) }
+                    alreadyGivenPermission: MutableState<Boolean>, showDialog: MutableState<Boolean>, logViewModel: LogViewModel){
     var driversForDialog by remember { mutableStateOf(listOf<String>()) }
     var availableDrivers by remember { mutableStateOf(emptyList<UsbSerialDriver>()) }
     var selectedDriver by remember { mutableStateOf<UsbSerialDriver?>(null) }
@@ -57,7 +56,7 @@ fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?
 
                 if(drivers.size == 1) {
                     selectedDriver = availableDrivers[0]
-                    showDialog = false
+                    showDialog.value = false
                 }
             } catch (e: IOException) {
                 logViewModel.addLog("failed to connect to any USB device, ERROR ")
@@ -65,8 +64,8 @@ fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?
         }
     }
 
-    if (showDialog) {
-        AlertDialog(onDismissRequest = {},
+    if (showDialog.value) {
+        AlertDialog(onDismissRequest = {!showDialog.value},
             title = { Text(text = "Available USB Drivers") },
             text = { if (driversForDialog.isEmpty()) { Text("Searching for USB devices...") }
             else {
@@ -86,7 +85,7 @@ fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?
             },
             confirmButton = { Button(
                 onClick = {
-                    showDialog = false
+                    showDialog.value = false
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.LightGray,
@@ -99,7 +98,7 @@ fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?
             dismissButton = { Button(
                 onClick = {
                     selectedDriver = null
-                    showDialog = false
+                    showDialog.value = false
                           return@Button},
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.LightGray,
@@ -112,7 +111,7 @@ fun UsbDriverDialog(context: Context, usbSerialPort: MutableState<UsbSerialPort?
         )
     }
 
-    if (!showDialog && !alreadyShownDialog && !alreadyGivenPermission.value) {
+    if (!showDialog.value && !alreadyShownDialog && !alreadyGivenPermission.value) {
         logViewModel.addLog("Requesting USB permission")
         alreadyShownDialog = true
         RequestUsbPermission(logViewModel)
