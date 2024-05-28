@@ -17,9 +17,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 
 @Composable
 fun GpsInfoScreen(satellites: Int, latitude: Double, longitude : Double, altitude : Double, hasLocationEnabled: Boolean, hdop: Double, vdop: Double, pdop: Double) {
+
+    val formattedLatitude = String.format(Locale.US, "%.6f", latitude)
+    val formattedLongitude = String.format(Locale.US, "%.6f", longitude )
+    val formattedAltitude = String.format(Locale.US, "%.1f", altitude)
+    val formattedHdop = String.format(Locale.US, "%.1f", hdop)
+    val formattedVdop = String.format(Locale.US, "%.1f", vdop)
+    val formattedPdop = String.format(Locale.US, "%.1f", pdop)
+
     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.Center){
         Text( text = "Gps Information", modifier = Modifier.padding(bottom = 10.dp), fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Column(
@@ -32,20 +41,20 @@ fun GpsInfoScreen(satellites: Int, latitude: Double, longitude : Double, altitud
             Row {
                 Text( text = "Satelites : $satellites", modifier = Modifier.padding(start = 5.dp, bottom = 10.dp), fontSize = 20.sp, color = Color.White)
                 Spacer(modifier = Modifier.weight(1f))
-                Text( text = "Hdop : $hdop", modifier = Modifier.padding(bottom = 10.dp, end = 10.dp), fontSize = 20.sp, color = Color.White)
+                Text( text = "Hdop : $formattedHdop", modifier = Modifier.padding(bottom = 10.dp, end = 10.dp), fontSize = 20.sp, color = Color.White)
             }
             Row {
-                Text( text = "Latitude : $latitude", modifier = Modifier.padding(start = 5.dp,bottom = 10.dp), fontSize = 20.sp, color = Color.White)
+                Text( text = "Latitude : $formattedLatitude", modifier = Modifier.padding(start = 5.dp,bottom = 10.dp), fontSize = 20.sp, color = Color.White)
                 Spacer(modifier = Modifier.weight(1f))
-                Text( text = "Vdop : $vdop", modifier = Modifier.padding(bottom = 10.dp, end = 10.dp), fontSize = 20.sp, color = Color.White)
+                Text( text = "Vdop : $formattedVdop", modifier = Modifier.padding(bottom = 10.dp, end = 10.dp), fontSize = 20.sp, color = Color.White)
             }
             Row {
-                Text( text = "Longitude : $longitude", modifier = Modifier.padding(start = 5.dp,bottom = 10.dp), fontSize = 20.sp, color = Color.White)
+                Text( text = "Longitude : $formattedLongitude", modifier = Modifier.padding(start = 5.dp,bottom = 10.dp), fontSize = 20.sp, color = Color.White)
                 Spacer(modifier = Modifier.weight(1f))
-                Text( text = "Pdop : $pdop", modifier = Modifier.padding(bottom = 10.dp, end = 10.dp), fontSize = 20.sp, color = Color.White)
+                Text( text = "Pdop : $formattedPdop", modifier = Modifier.padding(bottom = 10.dp, end = 10.dp), fontSize = 20.sp, color = Color.White)
             }
 
-            Text( text = "Altitude : $altitude", modifier = Modifier.padding(start = 5.dp,bottom = 10.dp), fontSize = 20.sp, color = Color.White)
+            Text( text = "Altitude : $formattedAltitude", modifier = Modifier.padding(start = 5.dp,bottom = 10.dp), fontSize = 20.sp, color = Color.White)
             Text( text = "Location Enabled : $hasLocationEnabled", modifier = Modifier.padding(start = 5.dp,bottom = 10.dp), fontSize = 20.sp, color = Color.White)
         }
     }

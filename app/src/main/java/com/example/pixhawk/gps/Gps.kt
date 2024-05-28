@@ -84,16 +84,23 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
                 override fun onLocationResult(locationResult: LocationResult?) {
                     locationResult?.lastLocation?.let { location ->
 
-                        latitude.value = String.format(Locale.US, "%.6f", location.latitude).toDouble()
-                        longitude.value = String.format(Locale.US, "%.6f", location.longitude ).toDouble()
-                        altitude.value = String.format(Locale.US, "%.1f", location.altitude).toDouble()
+                        latitude.value = location.latitude
+                        longitude.value = location.longitude
+                        altitude.value = location.altitude
 
-                        val gpsData = "Pos: ${latitude.value},${longitude.value},${altitude.value},${satellites.value},$hdop"
-                        val dopsData = "DOP: $hdop,$vdop,$pdop,${satellites.value}"
+                        val formattedLatitude = String.format(Locale.US, "%.6f", latitude.value)
+                        val formattedLongitude = String.format(Locale.US, "%.6f", longitude.value )
+                        val formattedAltitude = String.format(Locale.US, "%.1f", altitude.value)
+                        val formattedHdop = String.format(Locale.US, "%.1f", hdop.value)
+                        val formattedVdop = String.format(Locale.US, "%.1f", vdop.value)
+                        val formattedPdop = String.format(Locale.US, "%.1f", pdop.value)
+
+                        val gpsData = "Pos: $formattedLatitude,$formattedLongitude,$formattedAltitude,${satellites.value},$formattedHdop"
+                        val dopsData = "DOP: $formattedHdop,$formattedVdop,$formattedPdop,${satellites.value}"
 
                         Log.i(
                             "Gps",
-                            "GPS Location - Latitude: $latitude, Longitude: $longitude, Altitude: $altitude, Satellites: ${satellites.value}, HDOP: $hdop, VDOP: $vdop, PDOP: $pdop"
+                            "GPS Location - Latitude: $formattedLatitude, Longitude: $formattedLongitude, Altitude: $formattedAltitude, Satellites: ${satellites.value}, HDOP: $formattedHdop, VDOP: $formattedVdop, PDOP: $formattedPdop"
                         )
 
                         stringOfGpsAndDops.value.clear()
