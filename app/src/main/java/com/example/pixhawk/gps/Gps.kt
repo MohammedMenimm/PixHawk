@@ -33,6 +33,9 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
     var longitude = mutableStateOf(0.0)
     var altitude = mutableStateOf(0.0)
     var satellites = mutableStateOf(0)
+    var speed =  mutableStateOf (0f)
+    var bearing = mutableStateOf (0f)
+    val MINIMUM_SPEED_THRESHOLD = 0.5f // m/s
 
     private val locationRunnable = object : Runnable {
         override fun run() {
@@ -45,7 +48,8 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
     }
     @Composable
     fun ShowGpsInformation() {
-        GpsInfoScreen(satellites.value,latitude.value,longitude.value,altitude.value,hasLocationEnabled.value, hdop.value,vdop.value,pdop.value)
+        GpsInfoScreen(satellites.value,latitude.value,longitude.value,altitude.value,hasLocationEnabled.value,
+            hdop.value,vdop.value,pdop.value,speed.value,bearing.value)
     }
 
     private fun getGpsLocation() {
@@ -87,6 +91,8 @@ class Gps(private val context: Context, private val logViewModel: LogViewModel, 
                         latitude.value = location.latitude
                         longitude.value = location.longitude
                         altitude.value = location.altitude
+                        speed.value = if (location.speed < MINIMUM_SPEED_THRESHOLD) 0.0f else location.speed
+                        bearing.value = location.bearing
 
                         val formattedLatitude = String.format(Locale.US, "%.6f", latitude.value)
                         val formattedLongitude = String.format(Locale.US, "%.6f", longitude.value )
