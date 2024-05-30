@@ -39,7 +39,6 @@ class RequestUsbPermission(private val logViewModel: LogViewModel) {
                 },
                 onPermissionDenied = {
                     logViewModel.addLog("Permission denied for USB device")
-                    Log.i("Mohammed", "Permission denied for USB device")
                 })
 
             val filter = IntentFilter(ACTION_USB_PERMISSION)
